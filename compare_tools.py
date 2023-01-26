@@ -3,6 +3,8 @@ import xml.parsers.expat as xmle
 import xml.etree.ElementTree as ET
 
 
+ET.register_namespace('', "<?xml version="1.0" encoding="UTF-8"?>")
+
 # Создание и сохранение xml
 # p = ET.Element('parent')
 # c = ET.SubElement(p, 'child1')
@@ -71,6 +73,6 @@ path = '../files/xml/ED421452554500003102022115928091.xml'
 change_attrib_element(path, 'ReqNum', attribute_generator(9), '../files/xml/test_2.xml')
 
 
-# TODO: в тегах какие-то посторонние символы. Проверить парсер в импорте
+# TODO: Определить пространство имен ET.register_namespace
 # TODO: пропадает при сохранении тег <?xml ...>
 # TODO: генерируемое значение для элементов атрибутов тегов может иметь в начале 0. Надо выяснить принимается ли такой
