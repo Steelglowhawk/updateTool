@@ -2,7 +2,7 @@ import time
 import xml.parsers.expat as xmle
 import xml.etree.ElementTree as ET
 
-
+ET.register_namespace('', 'urn:cbr-ru:elk:v2021.1.0')
 
 # Создание и сохранение xml
 # p = ET.Element('parent')
@@ -26,68 +26,51 @@ def attribute_generator(slice):
 
 def ed421_change_attrib(xml_source_file_path, path_to_save_xml, **kwargs):
     """
-    Изменение элемента атрибута тега
+    Изменение атрибутов в ED421
     :param xml_source_file_path: путь к xml-файлу
     :param path_to_save_xml: путь и имя для готового файла
     :param kwargs: аттрибуты тега и их новые значения
     :return:
     """
+    ET.register_namespace('', 'urn:cbr-ru:elk:v2021.1.0')
+
     tree = ET.parse(xml_source_file_path)
-    ET.register_namespace('', "urn:cbr-ru:elk:v2021.1.0")
+    root = tree.getroot()
 
-    # root = tree.getroot()
-    root = tree
-    print(root)
-    # поиск элемента (в root или в потомке)
     for key, value in kwargs.items():
-        print(key, value)
-
-        if root.find("./[@key]"):
-            print('Print', root.get("./[@key]"))
-            print(root.find("./[key]"))
-            print('The element is found in root with value is', root.get(key))
+        if root.findall(f'.[@{key}]'):  # поиск атрибута в рутовом элементе
             root.attrib[key] = value
-        else:
-            print(f'Element {key} is not found in root')
+        elif root.findall(f'.//*[@{key}]'):  # поиск атрибута в дочерних элементах
+            root.find(f'.//*[@{key}]').set(key, value)
+    tree.write(path_to_save_xml)  # сохранение xml файла
 
 
-        """
-            root.attrib[i] = j
-            print(f'New value for element {i} is {j}')
-            tree.write(path_to_save_xml)  # сохранение xml файла
-        """
+def route_info(xml_source_file_path, path_to_save_xml):
+    """
+    Редактирование RouteInfo
+    :param xml_source_file_path: путь к xml-файлу
+    :param path_to_save_xml: путь и имя для готового файла
+    :return:
+    """
+    namespace = 'http://www.cbr.ru/igr/'
+    ET.register_namespace('igr', namespace)
 
-        """
-        else:  # если не найдено в root искать в дочерних элементах (работает только для потомков первого порядка)
-            print(f'Element {keys} is not found in root')
-            for child in root:
-                if child.get(attrib) is not None:
-                    print(f'The element {attrib} is found in {child} with value is', child.get(attrib))
+    tree = ET.parse(xml_source_file_path)
+    root = tree.getroot()
+    root.find('{' + namespace + '}DocumentPackID').text = 'testText'
+    tree.write(path_to_save_xml)  # сохранение xml файла
 
-                    # print(child.tag, child.attrib)
-                    # print(f'attrib = {attrib}')
-
-                    child.attrib[attrib] = new_value
-                    print(f'New value for element {attrib} is {new_value}')
-
-                    # print(attrib.keys())
-                    # print(attrib.values())
-                    # print(child.get(element))
-                    # print(child.tag,)
-                    # print(child.find('{urn:cbr-ru:elk:v2021.1.0}CreditOpTerms').attrib)
-                    # root.find('{urn:cbr-ru:elk:v2021.1.0}CreditOpTerms').attrib = {'Keys':'Value'}
-                    """
-        tree.write(path_to_save_xml)  # сохранение xml файла
-
-
-
+    # print(xml)
+    
 # Блок с вызовом функций
-path = '../files/xml/ED421452554500003102022115928091.xml'
-attributes_and_values = {'EDNo': 'test', 'ReqNum': 'test'}
+# path = '../files/xml/ED421452554500003102022115928091.xml' #  путь для Mac
+path = './files/xml/ED421452554500003102022115928091.xml'  # путь для Windows
+attributes_and_values = {'EDNo': 'test1', 'ReqNum': 'test2'}
+# path = './files/xml/envelope.xml' #  путь для Windows
 # change_attrib_element(path, 'ReqNum', atribute_generator(19), '../files/xml/test_2.xml')
 # change_attrib_element(path, 'EDNo', atribute_generator(9), '../files/xml/test_3.xml')
-
+path_routeInfo = './files/xml/5bbf2a8b-fa43-4234-b222-66810ea28e5f/5a9eab65-00df-424f-89f0-e4424407d2c2'  # путь для Windows
 # проверка функции
 # change_attrib_element(path, 'ReqNum', attribute_generator(9), '../files/xml/test_2.xml')
-ed421_change_attrib(path, '../files/xml/test_2.xml', **attributes_and_values)
-test_var = "test"
+ed421_change_attrib(path, './files/xml/test_2.xml', **attributes_and_values)
+route_info(path_routeInfo, './files/xml/routeInfo_2.xml')
