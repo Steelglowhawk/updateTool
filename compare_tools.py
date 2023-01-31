@@ -90,4 +90,4 @@ attributes_and_values = {'EDNo': 'test', 'ReqNum': 'test'}
 # проверка функции
 # change_attrib_element(path, 'ReqNum', attribute_generator(9), '../files/xml/test_2.xml')
 ed421_change_attrib(path, '../files/xml/test_2.xml', **attributes_and_values)
-
+test_var = "test"
