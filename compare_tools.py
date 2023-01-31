@@ -3,7 +3,6 @@ import xml.parsers.expat as xmle
 import xml.etree.ElementTree as ET
 
 
-ET.register_namespace('', "urn:cbr-ru:elk:v2021.1.0")
 
 # Создание и сохранение xml
 # p = ET.Element('parent')
@@ -34,18 +33,23 @@ def ed421_change_attrib(xml_source_file_path, path_to_save_xml, **kwargs):
     :return:
     """
     tree = ET.parse(xml_source_file_path)
-    root = tree.getroot()
+    ET.register_namespace('', "urn:cbr-ru:elk:v2021.1.0")
+
+    # root = tree.getroot()
+    root = tree
     print(root)
     # поиск элемента (в root или в потомке)
     for key, value in kwargs.items():
         print(key, value)
 
-        if root.find("./[@attrib='key']") is not None:
+        if root.find("./[@key]"):
+            print('Print', root.get("./[@key]"))
+            print(root.find("./[key]"))
             print('The element is found in root with value is', root.get(key))
             root.attrib[key] = value
-        elif :
+        else:
             print(f'Element {key} is not found in root')
-            
+
 
         """
             root.attrib[i] = j
