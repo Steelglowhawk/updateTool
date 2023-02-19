@@ -23,7 +23,7 @@ def atribute_generator(char_value):  # 17 символов для имени ф�
     :param char_value: количество знаков в срезе
     :return: случайное число, которое зависит от системной даты и времени
     """
-    a = str(int(time.time()*10000000))
+    a = str(int(time.time() * 10000000))
     rv = random.randint(1, char_value - 1)
     return a[len(a) + rv - char_value::]  # рандомное число от 1 символа return a[len(a) - char_value::]
 
@@ -134,7 +134,6 @@ start_path = pathlib.Path.cwd()
 envelope_path = start_path.joinpath('sample/envelope.xml')
 routeinfo_path = start_path.joinpath('sample/RouteInfo.xml')
 ed421_path = start_path.joinpath('sample/ED421.xml')
-iteration_count = 1  # количество конвертов
 # -----------------------------------------------------------
 # создать каталоги temp, converts внутри каталога
 temp_path = create_new_directory(start_path, 'temp')
@@ -147,65 +146,78 @@ uri_for_routeinfo_envelope = 'http://www.cbr.ru/igr/'
 uri_for_ed421 = 'urn:cbr-ru:elk:v2021.1.0'
 text_for_sign_file = 'test signature file'
 tags_attrib = ['name', 'fileType']  # теги для функции generate_xml_envelope
+
+
 # -----------------------------------------------------------
 # сгенерировать имена для файлов
-for i in range(1, iteration_count + 1):
-    arhive_name = name_for_ik()  # имя для архива, в который будут упакованы все файлы
-    ed421_name_for_arh = name_for_ik()  # имя для архива, в котором лежит ed421
-    routeinfo_name = name_for_ik()  # имя для routeinfo
-    sign_name = name_for_ik()  # имя для файла с ЭП
-# -----------------------------------------------------------
-    fileName_ed421 = pathlib.Path('ED421' + atribute_generator(17) + '.xml')
-    new_name_ED421 = temp_path.joinpath(fileName_ed421)
-    new_name_routeinfo = temp_path.joinpath(routeinfo_name)
-    new_name_envelope = temp_path.joinpath('envelope.xml')
-# -----------------------------------------------------------
-# создать файл с подписью
-    with open(temp_path.joinpath(sign_name), 'w') as sign_file:
-        sign_file.write(text_for_sign_file)
-# заполнение словаря значениями
-    tags_dictionary = dict(RouteInfo=routeinfo_name,
-                           Document=ed421_name_for_arh,
-                           Sign=sign_name,
-                           AssociatedFileIdentity=ed421_name_for_arh,
-                           fileName='ED421' + atribute_generator(17) + '.xml')
-    attributes_and_values = dict(EDNo=atribute_generator(8),
-                                 EDDate='testEDDate',
-                                 ReqNum=atribute_generator(10),
-                                 ReqDateTime='testReqDateTime',
-                                 GrantDate='testGrantDate',
-                                 ApplicationSum=atribute_generator(17))
-# изменение значений в ED421 и сохранение в другом каталоге
-    ed421_change_attrib(prefix_ed421,
-                        uri_for_ed421,
-                        ed421_path,
-                        new_name_ED421,
-                        **attributes_and_values)
-# изменение значений в RouteInfo и сохранение в другом каталоге
-    routeinfo_change_attrib(prefix_for_routeinfo_envelope,
-                            uri_for_routeinfo_envelope,
-                            routeinfo_path,
-                            new_name_routeinfo,
-                            arhive_name)
-# изменение значений в RouteInfo и сохранение в другом каталоге
-    envelope_change_attrib(prefix_for_routeinfo_envelope,
-                           uri_for_routeinfo_envelope,
-                           envelope_path,
-                           tags_attrib,
-                           tags_dictionary,
-                           new_name_envelope)
-# добавление ED421 в архив
-    get_arhive(temp_path.joinpath(ed421_name_for_arh),
-               new_name_ED421)
-# формирование целого конверта
-    get_arhive(temp_path.joinpath(pathlib.Path(arhive_name + '.zip')),
-               temp_path.joinpath(ed421_name_for_arh),
-               new_name_routeinfo,
-               new_name_envelope,
-               temp_path.joinpath(sign_name))
-# переместить конверт
-    move_files(temp_path.joinpath(pathlib.Path(arhive_name + '.zip')), convert_path)
-# после того как все операции выполнены удалить каталог temp без проверки содержимого (наличия подкаталогов)
-shutil.rmtree(temp_path, ignore_errors=True)
+def create_ik(iteration_count):
+    """
+
+    :param iteration_count:
+    :return:
+    """
+
+    for i in range(1, iteration_count + 1):
+        arhive_name = name_for_ik()  # имя для архива, в который будут упакованы все файлы
+        ed421_name_for_arh = name_for_ik()  # имя для архива, в котором лежит ed421
+        routeinfo_name = name_for_ik()  # имя для routeinfo
+        sign_name = name_for_ik()  # имя для файла с ЭП
+        # -----------------------------------------------------------
+        file_name_ed421 = pathlib.Path('ED421' + atribute_generator(17) + '.xml')
+        new_name_ed421 = temp_path.joinpath(file_name_ed421)
+        new_name_routeinfo = temp_path.joinpath(routeinfo_name)
+        new_name_envelope = temp_path.joinpath('envelope.xml')
+        # -----------------------------------------------------------
+        # создать файл с подписью
+        with open(temp_path.joinpath(sign_name), 'w') as sign_file:
+            sign_file.write(text_for_sign_file)
+        # заполнение словаря значениями
+        tags_dictionary = dict(RouteInfo=routeinfo_name,
+                               Document=ed421_name_for_arh,
+                               Sign=sign_name,
+                               AssociatedFileIdentity=ed421_name_for_arh,
+                               fileName='ED421' + atribute_generator(17) + '.xml')
+        attributes_and_values = dict(EDNo=atribute_generator(8),
+                                     EDDate='testEDDate',
+                                     ReqNum=atribute_generator(10),
+                                     ReqDateTime='testReqDateTime',
+                                     GrantDate='testGrantDate',
+                                     ApplicationSum=atribute_generator(17))
+        # изменение значений в ED421 и сохранение в другом каталоге
+        ed421_change_attrib(prefix_ed421,
+                            uri_for_ed421,
+                            ed421_path,
+                            new_name_ed421,
+                            **attributes_and_values)
+        # изменение значений в RouteInfo и сохранение в другом каталоге
+        routeinfo_change_attrib(prefix_for_routeinfo_envelope,
+                                uri_for_routeinfo_envelope,
+                                routeinfo_path,
+                                new_name_routeinfo,
+                                arhive_name)
+        # изменение значений в RouteInfo и сохранение в другом каталоге
+        envelope_change_attrib(prefix_for_routeinfo_envelope,
+                               uri_for_routeinfo_envelope,
+                               envelope_path,
+                               tags_attrib,
+                               tags_dictionary,
+                               new_name_envelope)
+        # добавление ED421 в архив
+        get_arhive(temp_path.joinpath(ed421_name_for_arh),
+                   new_name_ed421)
+        # формирование целого конверта
+        get_arhive(temp_path.joinpath(pathlib.Path(arhive_name + '.zip')),
+                   temp_path.joinpath(ed421_name_for_arh),
+                   new_name_routeinfo,
+                   new_name_envelope,
+                   temp_path.joinpath(sign_name))
+        # переместить конверт
+        move_files(temp_path.joinpath(pathlib.Path(arhive_name + '.zip')), convert_path)
+        # после того как все операции выполнены удалить каталог temp без проверки содержимого (наличия подкаталогов)
+    shutil.rmtree(temp_path, ignore_errors=True)
+
+
+if __name__ == '__main__':
+    create_ik(2)
 
 # TODO добавить изменение даты в трех местах в ED421
