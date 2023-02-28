@@ -1,212 +1,163 @@
 import sys
-import os
 import pathlib
 import generator_func
-from time import sleep
-import random
+from datetime import datetime
 
-from PyQt6.QtCore import Qt, QObject, QThread, pyqtSignal, QThreadPool, QDate
+from PyQt6.QtCore import QRunnable, QThreadPool, QDateTime
 from PyQt6.QtWidgets import (QApplication,
                              QDateTimeEdit,
                              QLabel,
                              QMainWindow,
                              QPushButton,
-                             QVBoxLayout,
                              QWidget,
                              QFileDialog,
                              QGridLayout,
                              QLineEdit,
+                             QComboBox,
                              QProgressBar,
-                             QStatusBar
-)
+                             QStatusBar,
+                             QSpinBox,
+                             QTableWidget,
+                             QTableWidgetItem)
+from PyQt6.QtGui import QIcon
 
 
-class Worker(QObject):
-    finished = pyqtSignal()
-    progress = pyqtSignal(int)
-
-    # get_dir = '/Users/steelhawk/PycharmProjects/UpdateTool/files'
-
-    # def run(self):  # образец
-    #     """Long-running task."""
-    #     for i in range(5):
-    #         sleep(1)
-    #         self.progress.emit(i + 1)
-    #     self.finished.emit()
-
+class Worker(QRunnable):  # класс для мультипоточности???
     def run(self):  # мой код
-        pass
+        date_1 = win.date_1
+        ed_date = date_1.toString('yyyy-MM-dd')
+        req_date_time = date_1.toString('yyyy-MM-ddThh:mm:ssZ')
+        path_for_ik = win.directory_path.currentText()  # в качестве пути для ИК берётся значение, указанное в ComboBox
+        win.progressbar.setMaximum(win.ik_quantity.value())
+        win.btn_create_IK.setEnabled(False)
+        start = datetime.now()
+        # aaa = generator_func.check_dir_emptiness(path_for_ik) # проверка каталога сохранения ИК на наличие файлов
+        for i in range(win.ik_quantity.value()):
+            generator_func.create_ik(path_for_ik, ed_date, req_date_time)
+            win.progressbar.setValue(i + 1)
+            win.status_bar.showMessage(f'Создано конвертов: {i + 1}')
+        end = datetime.now()
+        win.status_bar.showMessage(f'Создано конвертов: {win.ik_quantity.value()}. Затраченное время: {end - start}')
+        win.btn_create_IK.setEnabled(True)
 
 
 class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
+        self.list1 = [12, 213, 123, 45243]
+        self.path_history = set()
+        self.date_1 = ''
         self.setWindowTitle("Генератор ИК")  # заголовок главного окна
-        self.setMinimumSize(400, 150)  # минимальные размеры главного окна
+        self.setMinimumSize(500, 150)  # минимальные размеры главного окна
         self.get_directory_path = QPushButton('Выбрать каталог', self)
-        self.create_IK = QPushButton('Создать конверты', self)
-        self.iteration_label = QLabel()
+        self.get_directory_path.setFixedWidth(150)  # установка ширины кнопки
+        self.btn_create_IK = QPushButton('Создать конверты', self)
+        self.ik_quantity_label = QLabel()
         self.calendar_label = QLabel()
-        self.directory_path = QLineEdit()
-        self.converts_quantity = QLineEdit()
+        self.line_edit_for_combo = QLineEdit()
+        self.directory_path = QComboBox()
+        self.directory_path.setLineEdit(self.line_edit_for_combo)
+        self.ik_quantity = QSpinBox()
         self.calendar = QDateTimeEdit()
         self.progressbar = QProgressBar()
         self.status_bar = QStatusBar()
-        # self.start_date = QDate.setDate(2023, 1, 1)
-        self.start_date = QDate.currentDate()
-        print(self.start_date)
-
+        self.start_date = QDateTime.currentDateTime()
+        self.calendar.setDisplayFormat('dd.MM.yyyy')
+        self.ik_quantity.setMaximum(9999)
+        self.setMaximumWidth(1800)
         self.get_directory_path.clicked.connect(self.get_directory)
-        # написать функцию для созданию конвертов??? См. строка ниже
-        self.create_IK.clicked.connect(self.create_ik_func)
-        self.converts_quantity.textChanged.connect(self.line_edit_signal)
+        self.btn_create_IK.clicked.connect(self.create_ik_func)
+        self.ik_quantity.textChanged.connect(self.ik_quantity_signal)
+        self.calendar.dateTimeChanged.connect(self.calendar_changed)
         self.calendar.setCalendarPopup(True)
-        self.calendar.setMinimumDate(self.start_date)
+        self.calendar.setDateTime(self.start_date)
+        self.date_1 = self.calendar.dateTime()
+        self.table = QTableWidget()
+        self.table_widget_item = QTableWidgetItem()
+        # размещение элементов
         grid_layout = QGridLayout()
         grid_layout.addWidget(self.get_directory_path, 0, 0)
         grid_layout.addWidget(self.directory_path, 0, 1)
-        grid_layout.addWidget(self.iteration_label, 1, 0)
-        grid_layout.addWidget(self.converts_quantity, 1, 1)
+        grid_layout.addWidget(self.ik_quantity_label, 1, 0)
+        grid_layout.addWidget(self.ik_quantity, 1, 1)
         grid_layout.addWidget(self.calendar_label, 2, 0)
         grid_layout.addWidget(self.calendar, 2, 1)
-        grid_layout.addWidget(self.create_IK, 3, 0, 1, 2)
-        grid_layout.addWidget(self.progressbar, 4, 0, 1, 2)
-
+        grid_layout.addWidget(self.btn_create_IK, 3, 0, 1, 2)
+        # grid_layout.addWidget(self.progressbar, 5, 0, 1, 2)
+        grid_layout.addWidget(self.status_bar, 4, 0, 1, 2)
         widget = QWidget()
         widget.setLayout(grid_layout)
         self.setCentralWidget(widget)
-        self.iteration_label.setText('Количество конвертов')
+        self.ik_quantity_label.setText('Количество конвертов')
         self.calendar_label.setText('Дата ИК')
-        self.create_IK.setEnabled(False)
+        self.btn_create_IK.setEnabled(False)
         # создание всплывающих подсказок для элементов интерфейса
         self.get_directory_path.setToolTip('Выберите каталог для сохранения ИК')
         self.directory_path.setToolTip('Можно вставить путь или выбрать с помощью кнопки')
-        self.converts_quantity.setToolTip('Количество создаваемых конвертов')
-        self.create_IK.setToolTip('Введите количество создаваемых конвертов')
+        self.ik_quantity.setToolTip('Количество создаваемых конвертов')
+        self.btn_create_IK.setToolTip('Введите количество создаваемых конвертов')
         self.calendar.setToolTip('Дата должна быть не ранее текущего ОД')
-        self.status_bar.showMessage('Ghbdfsdf')
+        self.status_bar.showMessage('')
+        # self.table.cellClicked(0,0)
         # Что-то про многопоточность
         self.threadpool = QThreadPool()
-        self.iteration_label = ''
+        self.ik_quantity_label = ''
         self.iteration_count = ''
         # определение переменных для пути к каталогам и файлам
-        # self.start_path = 'C:/install'
         self.start_path = pathlib.Path.cwd()
         self.envelope_path = self.start_path.joinpath('sample/envelope.xml')
         self.routeinfo_path = self.start_path.joinpath('sample/RouteInfo.xml')
         self.ed421_path = self.start_path.joinpath('sample/ED421.xml')
-        self.directory_path.setText(str(self.start_path))
-
-    '''Это от моего старого интерфейса
-    def setupUi(self):
-        self.setWindowTitle("Freezing GUI")
-        self.resize(300, 150)
-
-        self.status = self.statusBar()
-
-        self.centralWidget = QWidget()
-        self.setCentralWidget(self.centralWidget)
-        # Create and connect widgets
-        self.clicksLabel = QLabel("Counting: 0 clicks", self)
-        self.clicksLabel.setAlignment((Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
-        self.stepLabel = QLabel("Long-Running Step: 0")
-        self.stepLabel.setAlignment((Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
-        self.countBtn = QPushButton("Click me!", self)
-        self.countBtn.clicked.connect(self.countClicks)
-        self.longRunningBtn = QPushButton("Long-Running Task!", self)
-        self.longRunningBtn.clicked.connect(self.runLongTask)
-        self.button_file_dialog = QPushButton('Выберите ED421')  # кнопка для вызова окна выбора файла
-        self.button_file_dialog.clicked.connect(self.get_ed)
-        self.button_make_file = QPushButton()
-        self.button_make_file.setText('Создать ИК')
-        self.button_make_file.setToolTip('Создат заданное количество ИК')
-        self.button_make_file.setDisabled(True)
-        self.button_make_file.clicked.connect(self.path_to_file)
-
-        # Set the layout
-        layout = QVBoxLayout()
-        layout.addWidget(self.clicksLabel)
-        layout.addWidget(self.countBtn)
-        layout.addWidget(self.button_file_dialog)
-        layout.addWidget(self.button_make_file)
-        layout.addStretch()
-        layout.addWidget(self.stepLabel)
-        layout.addWidget(self.longRunningBtn)
-        self.centralWidget.setLayout(layout)
-    '''
+        self.line_edit_for_combo.setText(str(self.start_path))
+        self.path_for_ik = self.start_path
+        self.path_for_ik_str = str(self.path_for_ik)
+        # подгонка ширины под длину пути к каталогу
+        self.setMinimumWidth(int(len(str(self.start_path)) * 8.5))
 
     def get_directory(self):
         """
         Вызов диалогового окна для выбора каталога сохранения создаваемых конвертов
         :return:
         """
-        self.start_path = QFileDialog.getExistingDirectory(self, caption='Выбрать каталог сохранения',
-                                                           directory=str(pathlib.Path.cwd()))
-        self.directory_path.setText(self.start_path)
-
-        # size_status = len(self.directory_path.())
-        # self.setMinimumWidth(size_status * 8)
+        self.path_for_ik = QFileDialog.getExistingDirectory(self, caption='Выбрать каталог сохранения',
+                                                            directory=str(pathlib.Path.cwd()))
+        self.path_for_ik_str = str(self.path_for_ik)
+        self.line_edit_for_combo.setText(self.path_for_ik_str)
+        self.setMinimumWidth(len(self.path_for_ik_str * 10))
 
     def create_ik_func(self):
         """
         Создание конвертов
         :return:
         """
-        generator_func.create_ik(int(self.converts_quantity.text()))
+        worker = Worker()  # делаем переменную на созданный класс FirstThread
+        self.threadpool.start(worker)  # обращаемся к созданному классу FirstThread
+        # добавление пути для ИК в выпадающий список
+        if self.path_for_ik_str in self.path_history:
+            pass
+        elif self.path_for_ik_str not in self.path_history:
+            self.path_history.add(self.path_for_ik_str)
+            self.directory_path.addItem(self.path_for_ik_str)
 
-    def line_edit_signal(self, value):
+    def ik_quantity_signal(self, value):
         """
         Определяет заполнено поле с количеством конвертов или нет и блокирует кнопку создания ИК
         :param value:
         :return:
         """
-        if self.converts_quantity.text() == '':
-            self.create_IK.setEnabled(False)
-            self.create_IK.setToolTip('Введите количество создаваемых конвертов')
+        if self.ik_quantity.value() == 0:
+            self.btn_create_IK.setEnabled(False)
+            self.btn_create_IK.setToolTip('Введите количество создаваемых конвертов')
         else:
-            self.create_IK.setEnabled(True)
-            self.create_IK.setToolTip('Создать конверты')
-            self.iteration_count = value
+            self.btn_create_IK.setEnabled(True)
+            self.btn_create_IK.setToolTip('Создать конверты')
 
-    def reportProgress(self, n):  # Это старое. Надо проверить
-        self.stepLabel.setText(f"Long-Running Step: {n}")
+    def calendar_changed(self):
+        self.date_1 = self.calendar.dateTime()
 
-    def path_to_file(self):  # Это старое. Надо проверить
-        self.thread = QThread()
-        self.worker_b = Worker()
-        self.worker_b.moveToThread(self.thread)
-        self.thread.started.connect(self.worker_b.run)  # вызов метода экзепляра класса Worker при старте потока
-        self.worker_b.finished.connect(self.thread.quit)
-        self.worker_b.finished.connect(self.worker_b.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-        self.worker_b.progress.connect(self.reportProgress)
-        self.thread.start()
-        # if self.get_dir: # наверное надо перенести в Worker
-        #     work_with_file.make_file(self.get_dir)
-        #     self.label_get_dir.setText(f'File "{work_with_file.file_name}" created at the {self.get_dir}')
-        # else:
-        #     self.label_get_dir.setText('Directory for copying is not selected yet')
+    def path_history_unical(self):
 
-    def runLongTask(self):  # Это старое. Но это что-то от многопоточности
-        self.thread = QThread()
-        self.worker = Worker()
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)  # вызов метода экзепляра класса Worker при старте потока
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-        self.worker.progress.connect(self.reportProgress)
-        self.thread.start()
-        self.thread.setPriority(QThread.Priority.LowPriority)  # приоритет процесса
-        print(self.thread.priority())
-
-        self.longRunningBtn.setEnabled(False)
-        self.thread.finished.connect(
-            lambda: self.longRunningBtn.setEnabled(True)
-        )
-        self.thread.finished.connect(
-            lambda: self.stepLabel.setText("Long-Running Step: 0")
-        )
+        pass
 
 
 if __name__ == '__main__':
@@ -222,20 +173,12 @@ if __name__ == '__main__':
             }
             QProgressBar::chunk {
                 background-color: #05B8CC;
-                width: 20px;
+                width: 10px;
+                /*margin: 0.5px;*/
             }
             """
     app.setStyleSheet(style)
     win = Window()
+    app.setWindowIcon(QIcon(str(win.start_path.joinpath('other/hedgehog_deep_red.png'))))
     win.show()
     sys.exit(app.exec())
-
-# TODO: поместить в строку со статусом время выполнения операции
-# TODO: что делает кнопка выбор каталога? Это каталог для сохранения ИК?
-# TODO: адаптировать размер окна под длину текста в поле для ввода каталога
-# TODO: ограничить допустимые значения для поля с количеством конвертов (только целые числа)
-# TODO: выяснить куда сохраняются ИК при выборе другой папки и где формируются временные каталоги
-# TODO: зачем мы кладем ИК в каталог converts если был указан другой путь? Это неправильно. Но в то же время
-#  надо подумать что делать если выбранный каталог уже не пустой. То есть, если сейчас убрать создание
-#  подкаталога converts и складывать файлы в указанный каталог, то может возникнуть ситуация
-#  когда ИК будут лежать вместе с другими файлами и тогда их неудобно удалять (например)
