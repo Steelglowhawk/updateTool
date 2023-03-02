@@ -3,7 +3,7 @@ import pathlib
 import generator_func
 from datetime import datetime
 
-from PyQt6.QtCore import QRunnable, QThreadPool, QDateTime
+from PyQt6.QtCore import QRunnable, QThreadPool, QDateTime, QSettings
 from PyQt6.QtWidgets import (QApplication,
                              QDateTimeEdit,
                              QLabel,
@@ -44,13 +44,15 @@ class Worker(QRunnable):  # класс для мультипоточности??
 class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
-        self.list1 = [12, 213, 123, 45243]
         self.path_history = set()
         self.date_1 = ''
         self.setWindowTitle("Генератор ИК")  # заголовок главного окна
         self.setMinimumSize(500, 150)  # минимальные размеры главного окна
         self.get_directory_path = QPushButton('Выбрать каталог', self)
         self.get_directory_path.setFixedWidth(150)  # установка ширины кнопки
+        # Добавляем файл с настройками
+        self.settings = QSettings('settings.ini', QSettings.Format.IniFormat)
+        # Определяем элементы интерфейса
         self.btn_create_IK = QPushButton('Создать конверты', self)
         self.ik_quantity_label = QLabel()
         self.calendar_label = QLabel()
@@ -138,6 +140,9 @@ class Window(QMainWindow):
         elif self.path_for_ik_str not in self.path_history:
             self.path_history.add(self.path_for_ik_str)
             self.directory_path.addItem(self.path_for_ik_str)
+            self.settings.beginGroup('001')  # Открыть группу в файле с настройками
+            self.settings.setValue('Path', self.path_history)  # Сохранить переменную с историей в файле с настройками
+            self.settings.endGroup()  # Закрыть группу в файле с настройками
 
     def ik_quantity_signal(self, value):
         """
