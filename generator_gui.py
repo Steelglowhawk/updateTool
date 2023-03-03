@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import generator_func
+import generator_logging
 from datetime import datetime
 
 from PyQt6.QtCore import QRunnable, QThreadPool, QDateTime, QSettings
@@ -18,8 +19,11 @@ from PyQt6.QtWidgets import (QApplication,
                              QStatusBar,
                              QSpinBox,
                              QTableWidget,
-                             QTableWidgetItem)
+                             QTableWidgetItem,
+                             QMessageBox)
 from PyQt6.QtGui import QIcon
+
+MAXIMUM_IK_QUANTITY = 9999
 
 
 class Worker(QRunnable):  # класс для мультипоточности???
@@ -38,20 +42,22 @@ class Worker(QRunnable):  # класс для мультипоточности??
             win.status_bar.showMessage(f'Создано конвертов: {i + 1}')
         end = datetime.now()
         win.status_bar.showMessage(f'Создано конвертов: {win.ik_quantity.value()}. Затраченное время: {end - start}')
+        generator_logging.log_event(f'Создано конвертов: {win.ik_quantity.value()}. Каталог: {path_for_ik}. '
+                                    f'Затраченное время: {end - start}')
         win.btn_create_IK.setEnabled(True)
 
 
 class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
+        # Добавляем файл с настройками
+        self.settings = QSettings('settings.ini', QSettings.Format.IniFormat)
         self.path_history = set()
         self.date_1 = ''
         self.setWindowTitle("Генератор ИК")  # заголовок главного окна
         self.setMinimumSize(500, 150)  # минимальные размеры главного окна
         self.get_directory_path = QPushButton('Выбрать каталог', self)
         self.get_directory_path.setFixedWidth(150)  # установка ширины кнопки
-        # Добавляем файл с настройками
-        self.settings = QSettings('settings.ini', QSettings.Format.IniFormat)
         # Определяем элементы интерфейса
         self.btn_create_IK = QPushButton('Создать конверты', self)
         self.ik_quantity_label = QLabel()
@@ -65,7 +71,7 @@ class Window(QMainWindow):
         self.status_bar = QStatusBar()
         self.start_date = QDateTime.currentDateTime()
         self.calendar.setDisplayFormat('dd.MM.yyyy')
-        self.ik_quantity.setMaximum(9999)
+        self.ik_quantity.setMaximum(MAXIMUM_IK_QUANTITY)
         self.setMaximumWidth(1800)
         self.get_directory_path.clicked.connect(self.get_directory)
         self.btn_create_IK.clicked.connect(self.create_ik_func)
@@ -98,7 +104,7 @@ class Window(QMainWindow):
         self.directory_path.setToolTip('Можно вставить путь или выбрать с помощью кнопки')
         self.ik_quantity.setToolTip('Количество создаваемых конвертов')
         self.btn_create_IK.setToolTip('Введите количество создаваемых конвертов')
-        self.calendar.setToolTip('Дата должна быть не ранее текущего ОД')
+        self.calendar.setToolTip('Дата интеграционного конверта, дата заявки, дата выдачи кредита')
         self.status_bar.showMessage('')
         # self.table.cellClicked(0,0)
         # Что-то про многопоточность
@@ -115,6 +121,16 @@ class Window(QMainWindow):
         self.path_for_ik_str = str(self.path_for_ik)
         # подгонка ширины под длину пути к каталогу
         self.setMinimumWidth(int(len(str(self.start_path)) * 8.5))
+        # импорт сохраненных настроек
+        if self.settings.value('OD'):
+            self.calendar.setDateTime(self.settings.value('OD'))
+        else:
+            self.date_1 = self.calendar.date()
+        if self.settings.value('Path'):
+            self.directory_path.addItems(self.settings.value('Path'))
+            self.path_history = self.settings.value('Path')
+        else:
+            self.path_history = set()
 
     def get_directory(self):
         """
@@ -140,9 +156,6 @@ class Window(QMainWindow):
         elif self.path_for_ik_str not in self.path_history:
             self.path_history.add(self.path_for_ik_str)
             self.directory_path.addItem(self.path_for_ik_str)
-            self.settings.beginGroup('001')  # Открыть группу в файле с настройками
-            self.settings.setValue('Path', self.path_history)  # Сохранить переменную с историей в файле с настройками
-            self.settings.endGroup()  # Закрыть группу в файле с настройками
 
     def ik_quantity_signal(self, value):
         """
@@ -160,9 +173,9 @@ class Window(QMainWindow):
     def calendar_changed(self):
         self.date_1 = self.calendar.dateTime()
 
-    def path_history_unical(self):
-
-        pass
+    def closeEvent(self, event):  # переопределение события закрытия окна
+        self.settings.setValue('Path', self.path_history)  # Сохранить переменную с историей в файле с настройками
+        self.settings.setValue('OD', self.date_1)  # Сохранить переменную с датой в файле с настройками
 
 
 if __name__ == '__main__':
